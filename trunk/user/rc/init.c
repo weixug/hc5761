@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <sys/time.h>
 
 #include "rc.h"
@@ -131,7 +132,11 @@ catch_sig_fatal(int sig)
 	sleep(1);
 	sync();
 
+#ifdef MTD_FLASH_32M_REBOOT_BUG
+	system("/bin/mtd_write -r unlock mtd1");
+#else
 	reboot(RB_AUTOBOOT);
+#endif
 
 	do {
 		sleep(1);

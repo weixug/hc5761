@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <net/if.h>
+#include <time.h>
 
 #include "rc.h"
 #include "switch.h"
@@ -33,6 +34,7 @@
 static int
 wif_control(const char *wifname, int is_up)
 {
+	logmessage(LOGNAME, "%s: ifname: %s, isup: %d", __func__, wifname, is_up);
 	return doSystem("ifconfig %s %s 2>/dev/null", wifname, (is_up) ? "up" : "down");
 }
 
@@ -422,6 +424,26 @@ stop_wifi_all_rt(void)
 #endif
 }
 
+void
+set_wifi_rssi_threshold(const char* ifname, int is_aband)
+{
+	int kickrssi = 0;
+	int assocrssi = 0;
+
+	if (is_aband) {
+		kickrssi = nvram_get_int("wl_KickStaRssiLow");
+		assocrssi = nvram_get_int("wl_AssocReqRssiThres");
+	} else {
+		kickrssi = nvram_get_int("rt_KickStaRssiLow");
+		assocrssi = nvram_get_int("rt_AssocReqRssiThres");
+	}
+
+	if (kickrssi <= 0 && kickrssi >= -100)
+		doSystem("iwpriv %s set %s=%d", ifname, "KickStaRssiLow", kickrssi);
+	if (assocrssi <= 0 && assocrssi >= -100)
+		doSystem("iwpriv %s set %s=%d", ifname, "AssocReqRssiThres", assocrssi);
+}
+
 void 
 start_wifi_ap_wl(int radio_on)
 {
@@ -443,12 +465,14 @@ start_wifi_ap_wl(int radio_on)
 		wif_control(IFNAME_5G_MAIN, 1);
 		br_add_del_if(IFNAME_BR, IFNAME_5G_MAIN, 1);
 		wif_control_m2u(1, IFNAME_5G_MAIN);
+		set_wifi_rssi_threshold(IFNAME_5G_MAIN, 1);
 		
 		if (is_guest_allowed_wl())
 		{
 			wif_control(IFNAME_5G_GUEST, 1);
 			br_add_del_if(IFNAME_BR, IFNAME_5G_GUEST, 1);
 			wif_control_m2u(1, IFNAME_5G_GUEST);
+			set_wifi_rssi_threshold(IFNAME_5G_GUEST, 1);
 		}
 	}
 #endif
@@ -498,12 +522,14 @@ start_wifi_ap_rt(int radio_on)
 		wif_control(IFNAME_2G_MAIN, 1);
 		br_add_del_if(IFNAME_BR, IFNAME_2G_MAIN, 1);
 		wif_control_m2u(0, IFNAME_2G_MAIN);
+		set_wifi_rssi_threshold(IFNAME_2G_MAIN, 0);
 		
 		if (is_guest_allowed_rt())
 		{
 			wif_control(IFNAME_2G_GUEST, 1);
 			br_add_del_if(IFNAME_BR, IFNAME_2G_GUEST, 1);
 			wif_control_m2u(0, IFNAME_2G_GUEST);
+			set_wifi_rssi_threshold(IFNAME_2G_GUEST, 0);
 		}
 	}
 #endif
@@ -611,7 +637,17 @@ start_wifi_apcli_wl(int radio_on)
 		wif_control(ifname_apcli, 1);
 		br_add_del_if(IFNAME_BR, ifname_apcli, !is_apcli_wisp_wl() || get_ap_mode());
 		if (nvram_wlan_get_int(1, "sta_auto"))
+#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+		{
+			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
+		}
+#else
+		{
 			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
+		}
+#endif
 	}
 	else
 	{
@@ -632,7 +668,17 @@ start_wifi_apcli_rt(int radio_on)
 #if !defined(USE_RT3352_MII)
 		br_add_del_if(IFNAME_BR, ifname_apcli, !is_apcli_wisp_rt() || get_ap_mode());
 		if (nvram_wlan_get_int(0, "sta_auto"))
+#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+		{
+			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
+		}
+#else
+		{
 			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
+		}
+#endif
 #endif
 	}
 #if !defined(USE_RT3352_MII)
@@ -665,7 +711,24 @@ reconnect_apcli(const char *ifname_apcli, int force)
 		return;
 
 	if (get_apcli_sta_auto(is_aband)) {
-		doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+		if (is_aband) {
+#if defined (USE_WID_5G) && (USB_WID_5G==7615 || USE_WID_5G==7915)
+			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
+#else
+			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
+#endif
+		} else {
+#if defined (USE_WID_2G) && (USB_WID_2G==7615 || USE_WID_2G==7915)
+			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
+#else
+			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
+#endif
+		}
+		
 	} else if (force) {
 		doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliEnable", 0);
 		usleep(300000);
@@ -680,7 +743,12 @@ restart_wifi_wl(int radio_on, int need_reload_conf)
 	stop_8021x_wl();
 
 	stop_wifi_all_wl();
-
+#if defined (BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
+	if (need_reload_conf) {
+		stop_8021x_rt();
+		stop_wifi_all_rt();
+	}
+#endif
 	if (need_reload_conf) {
 		gen_ralink_config_5g(0);
 		nvram_set_int_temp("reload_svc_wl", 1);
@@ -691,7 +759,18 @@ restart_wifi_wl(int radio_on, int need_reload_conf)
 	start_wifi_apcli_wl(radio_on);
 
 	start_8021x_wl();
+#if defined (BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
+	if (need_reload_conf) {
+		int rt_radio_on = get_enabled_radio_rt();
+		if (rt_radio_on)
+			rt_radio_on = is_radio_allowed_rt();
+		start_wifi_ap_rt(rt_radio_on);
+		start_wifi_wds_rt(rt_radio_on);
+		start_wifi_apcli_rt(rt_radio_on);
 
+		start_8021x_rt();
+	}
+#endif
 	restart_guest_lan_isolation();
 
 	check_apcli_wan(1, radio_on);
@@ -712,7 +791,12 @@ restart_wifi_rt(int radio_on, int need_reload_conf)
 	stop_8021x_rt();
 
 	stop_wifi_all_rt();
-
+#if defined (BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
+	if (need_reload_conf) {
+		stop_8021x_wl();
+		stop_wifi_all_wl();
+	}
+#endif
 	if (need_reload_conf) {
 		gen_ralink_config_2g(0);
 		nvram_set_int_temp("reload_svc_rt", 1);
@@ -723,7 +807,18 @@ restart_wifi_rt(int radio_on, int need_reload_conf)
 	start_wifi_apcli_rt(radio_on);
 
 	start_8021x_rt();
+#if defined (BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
+	if (need_reload_conf) {
+		int wl_radio_on = get_enabled_radio_wl();
+		if (wl_radio_on)
+			wl_radio_on = is_radio_allowed_wl();
+		start_wifi_ap_wl(wl_radio_on);
+		start_wifi_wds_wl(wl_radio_on);
+		start_wifi_apcli_wl(wl_radio_on);
 
+		start_8021x_wl();
+	}
+#endif
 	restart_guest_lan_isolation();
 
 	check_apcli_wan(0, radio_on);

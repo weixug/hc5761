@@ -51,6 +51,10 @@ function initial(){
 		showhide_div('row_hwnat', 0);
 	}
 
+	if (support_sfe()){
+		showhide_div('row_sfe', 1);
+	}
+
 	var o1 = document.form.wan_auth_mode;
 	if (!support_peap_ssl()){
 		o1.remove(3);
@@ -717,6 +721,16 @@ function simplyMAC(fullMAC){
                                                 </select>
                                             </td>
                                         </tr>
+                                        <tr id="row_sfe" style="display:none;">
+                                            <th><#WAN_SFE#></a></th>
+                                            <td>
+                                                <select name="sfe_enable" class="input">
+                                                    <option value="0" <% nvram_match_x("", "sfe_enable", "0", "selected"); %>>Disable</option>
+                                                    <option value="1" <% nvram_match_x("", "sfe_enable", "1", "selected"); %>>Enable for IPv4/IPv6</option>
+                                                    <option value="2" <% nvram_match_x("", "sfe_enable", "2", "selected"); %>>Enable for IPv4/IPv6 and WiFi</option>
+                                                </select>
+                                            </td>
+                                        </tr>
                                         <tr id="row_wan_poller">
                                             <th><#WAN_Poller#></th>
                                             <td>
@@ -912,6 +926,13 @@ function simplyMAC(fullMAC){
                                             </td>
                                         </tr>
                                         <tr>
+                                            <th><#PPP_LCP#></th>
+                                            <td>
+                                                <label class="radio inline"><input type="radio" value="1" name="wan_ppp_lcp" class="input" <% nvram_match_x("", "wan_ppp_lcp", "1", "checked"); %>><#checkbox_Yes#></label>
+                                                <label class="radio inline"><input type="radio" value="0" name="wan_ppp_lcp" class="input" <% nvram_match_x("", "wan_ppp_lcp", "0", "checked"); %>><#checkbox_No#></label>
+                                            </td>
+                                        </tr>
+                                        <tr>
                                             <th><#PPP_AdaptiveLCP#></th>
                                             <td>
                                                 <label class="radio inline"><input type="radio" value="1" name="wan_ppp_alcp" class="input" <% nvram_match_x("", "wan_ppp_alcp", "1", "checked"); %>><#checkbox_Yes#></label>
@@ -992,7 +1013,7 @@ function simplyMAC(fullMAC){
                                             </td>
                                         </tr>
                                         <tr id="row_vci">
-                                            <th><a class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this,7,19);">Vendor Class Identifier:</a></th>
+                                            <th><a class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this,7,19);"><#PPPConnection_x_HostNameForISP_itemvci#></a></th>
                                             <td>
                                                 <input type="text" name="wan_vci" class="input" maxlength="128" size="32" value="<% nvram_get_x("","wan_vci"); %>" onkeypress="return is_string(this,event);"/>
                                             </td>
@@ -1011,6 +1032,16 @@ function simplyMAC(fullMAC){
                                                     <option value="0" <% nvram_match_x("", "wan_ttl_fix", "0", "selected"); %>><#WAN_TTL_Item0#> (*)</option>
                                                     <option value="1" <% nvram_match_x("", "wan_ttl_fix", "1", "selected"); %>><#WAN_TTL_Item1#></option>
                                                     <option value="2" <% nvram_match_x("", "wan_ttl_fix", "2", "selected"); %>><#WAN_TTL_Item2#></option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th><#WAN_TTL_Value#></th>
+                                            <td>
+                                                <select name="wan_ttl_value" class="input">
+                                                    <option value="0" <% nvram_match_x("", "wan_ttl_value", "0", "selected"); %>><#WAN_TTL_Value_Item0#> (*)</option>
+                                                    <option value="64" <% nvram_match_x("", "wan_ttl_value", "64", "selected"); %>><#WAN_TTL_Value_Item1#></option>
+                                                    <option value="128" <% nvram_match_x("", "wan_ttl_value", "128", "selected"); %>><#WAN_TTL_Value_Item2#></option>
                                                 </select>
                                             </td>
                                         </tr>

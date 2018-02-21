@@ -42,6 +42,14 @@ function initial(){
 	if (support_2g_inic_mii())
 		document.form.rt_mode_x.remove(3);
 
+ 	if (typeof(support_2g_wid) === 'function'){
+		wid = support_2g_wid();
+		if (wid==7915){
+			document.form.rt_mode_x.remove(1);
+			document.form.rt_mode_x.remove(1);
+		}
+	}
+
 	showLANIPList();
 
 	change_wireless_bridge();
@@ -209,7 +217,11 @@ function showLANIPList(){
 
 	if(wds_aplist != ""){
 		for(var i = 0; i < wds_aplist.length ; i++){
-			wds_aplist[i][0] = decodeURIComponent(wds_aplist[i][0]);
+			try {
+				wds_aplist[i][0] = decodeURIComponent(wds_aplist[i][0]);
+			} catch (e) {
+				console.log("malformed utf-8 ssid:"+wds_aplist[i][0]);
+			}
 			if(wds_aplist[i][0] && wds_aplist[i][0].length > 16)
 				show_name = wds_aplist[i][0].substring(0, 14) + "..";
 			else
@@ -367,7 +379,7 @@ function hideClients_Block(){
 
                                     <table width="100%" align="center" cellpadding="4" cellspacing="0" class="table">
                                         <tr id="row_wds_apc" style="display:none;">
-                                            <th width="50%"><a id="ctl_apc_1" class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this, 0, 1);">STA SSID:</a></th>
+                                            <th width="50%"><a id="ctl_apc_1" class="help_tooltip" href="javascript:void(0);" onmouseover="openTooltip(this, 0, 1);"><#APSTA_SSID#></a></th>
                                             <td>
                                                 <div id="WDSAPList" class="alert alert-info ddown-list"></div>
                                                 <div class="input-append" style="float: left;">

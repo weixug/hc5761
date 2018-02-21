@@ -1,13 +1,37 @@
-SRC_NAME=aria2-1.15.2
+SRC_NAME=aria2-1.35.0
+SRC_URL=https://github.com/aria2/aria2/releases/download/release-1.35.0/aria2-1.35.0.tar.xz
 
-CFLAGS  += -ffunction-sections -fdata-sections
-CXXFLAGS += -ffunction-sections -fdata-sections
-LDFLAGS += -Wl,--gc-sections
+SRC_ARIA_NG_NAME=AriaNg-1.1.7-AllInOne
+SRC_ARIA_NG_URL=https://github.com/mayswind/AriaNg/releases/download/1.1.7/AriaNg-1.1.7-AllInOne.zip
+
+CFLAGS  += -ffunction-sections -fdata-sections -fvisibility=hidden
+CXXFLAGS += -ffunction-sections -fdata-sections -fvisibility-inlines-hidden
+LDFLAGS += -Wl,--gc-sections -static-libstdc++
 
 THISDIR = $(shell pwd)
 
-all: config_test
-	$(MAKE) -C $(SRC_NAME)
+all: download_test extract_test config_test
+	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
+ifeq ($(CONFIG_FIRMWARE_INCLUDE_ARIA_WEB_CONTROL),y)
+	( if [ ! -f $(THISDIR)/$(SRC_ARIA_NG_NAME).zip ]; then \
+		wget -t5 --timeout=20 --no-check-certificate -O $(SRC_ARIA_NG_NAME).zip $(SRC_ARIA_NG_URL); \
+	fi )
+	( if [ ! -d $(THISDIR)/ariaweb ]; then \
+		mkdir -p ariaweb; \
+		unzip -qq $(SRC_ARIA_NG_NAME).zip -d ariaweb; \
+	fi )
+endif
+
+download_test:
+	( if [ ! -f $(SRC_NAME).tar.xz ]; then \
+		wget -t5 --timeout=20 --no-check-certificate -O $(SRC_NAME).tar.xz $(SRC_URL); \
+	fi )
+
+extract_test:
+	( if [ ! -d $(SRC_NAME) ]; then \
+		tar xf $(SRC_NAME).tar.xz; \
+		patch -d $(SRC_NAME) -p1 -i ../disable-doc-test.patch; \
+	fi )
 
 config_test:
 	( if [ -f ./config_done ]; then \
@@ -32,8 +56,8 @@ configure:
 		--with-libz \
 		--with-openssl \
 		--with-libxml2 \
-		--with-xml-prefix=$(STAGEDIR) \
 		--with-libiconv-prefix=$(STAGEDIR) \
+		PKG_CONFIG_LIBDIR="$(STAGEDIR)/lib/pkgconfig" \
 		ZLIB_CFLAGS="-I$(STAGEDIR)/include" \
 		ZLIB_LIBS="-L$(STAGEDIR)/lib -lz" \
 		OPENSSL_CFLAGS="-I$(STAGEDIR)/include" \
@@ -46,13 +70,13 @@ clean:
 	if [ -f $(SRC_NAME)/Makefile ] ; then \
 		$(MAKE) -C $(SRC_NAME) distclean ; \
 	fi ; \
+	rm -rf ariaweb
 	rm -f config_done
-	rm -rf install
 
 romfs:
 ifeq ($(CONFIG_FIRMWARE_INCLUDE_ARIA_WEB_CONTROL),y)
 	cp -rf $(THISDIR)/ariaweb $(INSTALLDIR)/www
-	cd $(INSTALLDIR)/www/ariaweb && ln -sf /mnt/aria/config/configuration.js configuration.js
 endif
 	$(ROMFSINST) $(THISDIR)/$(SRC_NAME)/src/aria2c /usr/bin/aria2c
 	$(ROMFSINST) -p +x /usr/bin/aria.sh
+

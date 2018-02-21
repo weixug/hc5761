@@ -77,6 +77,7 @@ func_save()
 {
 	local fsz
 
+	logger -t "Storage save" "Save storage files to MTD partition \"$mtd_part_dev\""
 	echo "Save storage files to MTD partition \"$mtd_part_dev\""
 	rm -f $tbz
 	md5sum -c -s $hsh 2>/dev/null
@@ -92,6 +93,7 @@ func_save()
 		mtd_write write $tbz $mtd_part_name
 		if [ $? -eq 0 ] ; then
 			echo "Done."
+			logger -t "Storage save" "Done."
 		else
 			result=1
 			echo "Error! MTD write FAILED"
@@ -193,6 +195,8 @@ func_fill()
 	dir_inadyn="$dir_storage/inadyn"
 	dir_crond="$dir_storage/cron/crontabs"
 	dir_wlan="$dir_storage/wlan"
+	dir_chnroute="$dir_storage/chinadns"
+	dir_gfwlist="$dir_storage/gfwlist"
 
 	script_start="$dir_storage/start_script.sh"
 	script_started="$dir_storage/started_script.sh"
@@ -206,19 +210,36 @@ func_fill()
 
 	user_hosts="$dir_dnsmasq/hosts"
 	user_dnsmasq_conf="$dir_dnsmasq/dnsmasq.conf"
-	user_dnsmasq_serv="$dir_dnsmasq/dnsmasq.servers"
+	user_dhcp_conf="$dir_dnsmasq/dhcp.conf"
 	user_ovpnsvr_conf="$dir_ovpnsvr/server.conf"
 	user_ovpncli_conf="$dir_ovpncli/client.conf"
 	user_inadyn_conf="$dir_inadyn/inadyn.conf"
 	user_sswan_conf="$dir_sswan/strongswan.conf"
 	user_sswan_ipsec_conf="$dir_sswan/ipsec.conf"
 	user_sswan_secrets="$dir_sswan/ipsec.secrets"
+	
+	chnroute_file="/etc_ro/chnroute.bz2"
+	gfwlist_conf_file="/etc_ro/gfwlist.bz2"
 
 	# create crond dir
 	[ ! -d "$dir_crond" ] && mkdir -p -m 730 "$dir_crond"
 
 	# create https dir
 	[ ! -d "$dir_httpssl" ] && mkdir -p -m 700 "$dir_httpssl"
+
+	# create chnroute.txt
+	if [ ! -d "$dir_chnroute" ] ; then
+		if [ -f "$chnroute_file" ]; then
+			mkdir -p "$dir_chnroute" && tar jxf "$chnroute_file" -C "$dir_chnroute"
+		fi
+	fi
+
+	# create gfwlist
+	if [ ! -d "$dir_gfwlist" ] ; then
+		if [ -f "$gfwlist_conf_file" ]; then	
+			mkdir -p "$dir_gfwlist" && tar jxf "$gfwlist_conf_file" -C "$dir_gfwlist"
+		fi
+	fi
 
 	# create start script
 	if [ ! -f "$script_start" ] ; then
@@ -241,6 +262,23 @@ func_fill()
 #modprobe ip_set_list_set
 #modprobe xt_set
 
+#drop caches
+sync && echo 3 > /proc/sys/vm/drop_caches
+
+# Roaming assistant for mt76xx WiFi
+#iwpriv ra0 set KickStaRssiLow=-85
+#iwpriv ra0 set AssocReqRssiThres=-80
+#iwpriv rai0 set KickStaRssiLow=-85
+#iwpriv rai0 set AssocReqRssiThres=-80
+
+# Mount SATA disk
+#mdev -s
+
+#wing <HOST:443> <PASS>
+#wing 192.168.1.9:1080
+#ipset add gfwlist 8.8.4.4
+
+
 EOF
 		chmod 755 "$script_started"
 	fi
@@ -259,12 +297,15 @@ EOF
 	fi
 
 	# create post-iptables script
+
 	if [ ! -f "$script_postf" ] ; then
 		cat > "$script_postf" <<EOF
 #!/bin/sh
 
 ### Custom user script
 ### Called after internal iptables reconfig (firewall update)
+
+#wing resume
 
 EOF
 		chmod 755 "$script_postf"
@@ -448,19 +489,49 @@ dhcp-option=252,"\n"
 ### Set the boot filename for netboot/PXE
 #dhcp-boot=pxelinux.0
 
+### Log for all queries
+#log-queries
+
+### Keep DHCP host name valid at any times
+#dhcp-to-host
+
 EOF
+	if [ -f /usr/bin/vlmcsd ]; then
+		cat >> "$user_dnsmasq_conf" <<EOF
+### vlmcsd related
+srv-host=_vlmcs._tcp,my.router,1688,0,100
+
+EOF
+	fi
+
+	if [ -f /usr/bin/wing ]; then
+		cat >> "$user_dnsmasq_conf" <<EOF
+# Custom domains to gfwlist
+#gfwlist=mit.edu
+#gfwlist=openwrt.org,lede-project.org
+#gfwlist=github.com,github.io,githubusercontent.com
+
+EOF
+	fi
+
+	if [ -d $dir_gfwlist ]; then
+		cat >> "$user_dnsmasq_conf" <<EOF
+### gfwlist related (resolve by port 5353)
+#min-cache-ttl=3600
+#conf-dir=/etc/storage/gfwlist
+
+EOF
+	fi
 		chmod 644 "$user_dnsmasq_conf"
 	fi
 
 	# create user dns servers
-	if [ ! -f "$user_dnsmasq_serv" ] ; then
-		cat > "$user_dnsmasq_serv" <<EOF
-# Custom user servers file for dnsmasq
-# Example:
-#server=/mit.ru/izmuroma.ru/10.25.11.30
+	if [ ! -f "$user_dhcp_conf" ] ; then
+		cat > "$user_dhcp_conf" <<EOF
+#6C:96:CF:E0:95:55,192.168.1.10,iMac
 
 EOF
-		chmod 644 "$user_dnsmasq_serv"
+		chmod 644 "$user_dhcp_conf"
 	fi
 
 	# create user inadyn.conf"
@@ -536,6 +607,10 @@ client-to-client
 ### Allow clients with duplicate "Common Name"
 ;duplicate-cn
 
+### Legacy LZO adaptive compression
+;comp-lzo adaptive
+;push "comp-lzo adaptive"
+
 ### Keepalive and timeout
 keepalive 10 60
 
@@ -556,7 +631,7 @@ EOF
 # Please add needed params only!
 
 ### If your server certificates with the nsCertType field set to "server"
-ns-cert-type server
+remote-cert-tls server
 
 ### Process priority level (0..19)
 nice 0

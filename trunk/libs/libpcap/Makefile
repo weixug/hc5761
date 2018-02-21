@@ -1,7 +1,18 @@
-SRC_NAME=libpcap-1.4.0
+SRC_NAME=libpcap-1.9.1
+SRC_URL=http://www.tcpdump.org/release/$(SRC_NAME).tar.gz
 
-all: config_test
-	$(MAKE) -C $(SRC_NAME)
+all: download_test extract_test config_test
+	$(MAKE) -j$(HOST_NCPU) -C $(SRC_NAME)
+
+download_test:
+	( if [ ! -f $(SRC_NAME).tar.gz ]; then \
+		wget -t5 --timeout=20 --no-check-certificate -O $(SRC_NAME).tar.gz $(SRC_URL); \
+	fi )
+
+extract_test:
+	( if [ ! -d $(SRC_NAME) ]; then \
+		tar zxf $(SRC_NAME).tar.gz; \
+	fi )
 
 config_test:
 	( if [ -f ./config_done ]; then \
@@ -16,12 +27,11 @@ configure:
 	./configure \
 		--prefix=$(STAGEDIR) \
 		--enable-static \
-		--disable-shared \
+		--enable-shared \
 		$(if $(CONFIG_IPV6),--enable-ipv6,--disable-ipv6) \
 		--disable-yydebug \
-		--disable-can \
+		--disable-dbus \
 		--disable-usb \
-		--disable-canusb \
 		--disable-bluetooth \
 		--with-pcap=linux \
 		--without-flex \
@@ -40,8 +50,7 @@ clean:
 	rm -f config_done
 
 install:
-	$(MAKE) -C $(SRC_NAME) install DESTDIR="" ;
-	rm -f $(DESTDIR)/lib/libpcap.so* ;
+	$(MAKE) -C $(SRC_NAME) install DESTDIR=""
 
 romfs:
-
+	cp -fP $(DESTDIR)/lib/libpcap.so* $(ROMFSDIR)/lib
