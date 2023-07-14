@@ -386,6 +386,7 @@ function on_ttyd_link(){
                                                     <option value="prime256v1">EC P-256</option>
                                                     <option value="secp384r1">EC P-384</option>
                                                     <option value="secp521r1">EC P-521</option>
+
                                                 </select>
                                             </td>
                                             <td align="left">

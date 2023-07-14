@@ -1,5 +1,5 @@
-COPTS	= 
-CFLAGS	+= $(COPTS) -I.. -I../../include -fPIC
+COPTS	= -O2 -g
+CFLAGS	= $(COPTS) -I.. -I../../include -fPIC
 LDFLAGS	= -shared
 INSTALL	= install
 

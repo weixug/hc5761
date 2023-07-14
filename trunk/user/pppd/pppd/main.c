@@ -1433,8 +1433,8 @@ timeleft(tvp)
 {
     if (callout == NULL)
 	return NULL;
-
-    check_time();
+	
+	check_time();
 
     gettimeofday(&timenow, NULL);
     tvp->tv_sec = callout->c_time.tv_sec - timenow.tv_sec;
@@ -1646,8 +1646,7 @@ safe_fork(int infd, int outfd, int errfd)
 	/* Executing in the child */
 	sys_close();
 #ifdef USE_TDB
-	if (pppdb != NULL)
-		tdb_close(pppdb);
+	tdb_close(pppdb);
 #endif
 
 	/* make sure infd, outfd and errfd won't get tromped on below */
@@ -1832,7 +1831,7 @@ update_script_environment()
 		script_env[i] = newstring;
 	    else
 		add_script_env(i, newstring);
-	} else if (p != NULL) {
+	} else {
 	    remove_script_env(i);
 	}
     }

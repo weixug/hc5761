@@ -1,5 +1,4 @@
 /* B70 */
-
 #define BOARD_PID		"B70"
 #define BOARD_NAME		"B70"
 #define BOARD_DESC		"B70 Wireless Router"

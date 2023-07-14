@@ -35,7 +35,6 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <signal.h>
 #include <linux/version.h>
 #include <linux/sockios.h>

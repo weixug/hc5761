@@ -467,7 +467,7 @@ fsm_rconfreq(f, id, inp, len)
 	f->nakloops = 0;
 
     } else {
-	/* we sent CONFNAK or CONFREJ */
+	/* we sent CONFACK or CONFREJ */
 	if (f->state != ACKRCVD)
 	    f->state = REQSENT;
 	if( code == CONFNAK )

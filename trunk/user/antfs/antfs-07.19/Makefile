@@ -1,7 +1,6 @@
 KBUILD ?= /lib/modules/$(shell uname -r)/build
 VERSION ?= $(shell git describe --tags 2>/dev/null || echo unknown)
 DKMS_NAME = antfs
-LIBNTFS_SRC := libntfs-3g
 
 Q ?= @
 

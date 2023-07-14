@@ -93,18 +93,12 @@ dl_handle_link_wan(void)
 		nvram_set_int_temp("link_wan", (dl_status_wan) ? 1 : 0);
 #if defined (BOARD_GPIO_LED_WAN)
 		front_led_x = nvram_get_int("front_led_wan");
-		if (front_led_x == 1) {
+		if (front_led_x == 1)
 			LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_status_wan) ? LED_ON : LED_OFF);
-#if defined (BOARD_K2P) || defined (BOARD_PSG1218)
-			LED_CONTROL(BOARD_GPIO_LED_WIFI, (dl_status_wan) ? LED_OFF : LED_ON);
-#endif
-		} else if (front_led_x == 2) {
+		else if (front_led_x == 2) {
 			if (!get_wan_wisp_active(NULL) && !get_usb_modem_wan(0)) {
 				int dl_state = (dl_status_wan && has_wan_gw4() && has_wan_ip4(1)) ? 1 : 0;
 				LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_state) ? LED_ON : LED_OFF);
-#if defined (BOARD_K2P) || defined (BOARD_PSG1218)
-				LED_CONTROL(BOARD_GPIO_LED_WIFI, (dl_state) ? LED_OFF : LED_ON);
-#endif
 			}
 		}
 #endif
@@ -190,9 +184,6 @@ dl_handle_link_wisp(void)
 		if (front_led_wan == 2) {
 			int dl_state = (dl_status_wisp && has_wan_gw4() && has_wan_ip4(1)) ? 1 : 0;
 			LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_state) ? LED_ON : LED_OFF);
-#if defined (BOARD_K2P) || defined (BOARD_PSG1218)
-			LED_CONTROL(BOARD_GPIO_LED_WIFI, (dl_state) ? LED_OFF : LED_ON);
-#endif
 		}
 #endif
 	}
@@ -344,9 +335,7 @@ dl_update_leds(void)
 		dl_handle_link_usb(1);
 	}
 #endif
-#if defined (BOARD_K2P) || defined (BOARD_PSG1218)
-	LED_CONTROL(BOARD_GPIO_LED_WIFI, (dl_state) ? LED_OFF : LED_ON);
-#elif defined (BOARD_GPIO_LED_WIFI)
+#if defined (BOARD_GPIO_LED_WIFI)
 	LED_CONTROL(BOARD_GPIO_LED_WIFI, LED_ON);
 #endif
 #if defined (BOARD_GPIO_LED_ALL)
